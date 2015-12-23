@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent" >
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:id="@+id/input_set_linearlayout"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:orientation="vertical" >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/input_file_path" />
+
+        <EditText
+            android:id="@+id/input_file_path"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/yuv_wide" />
+
+        <EditText
+            android:id="@+id/yuv_wide"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        
+         <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/yuv_high" />
+
+        <EditText
+            android:id="@+id/yuv_high"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+        
+        <Spinner     
+        	android:id = "@+id/yuv_format"     
+        	android:layout_width = "wrap_content"     
+        	android:layout_height ="wrap_content" >     
+    	</Spinner >    
+        
+        
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:id="@+id/output_set_linearlayout"
+        android:layout_height="wrap_content"
+       android:layout_below="@id/input_set_linearlayout"
+        android:orientation="vertical" >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/output_file_path" />
+
+        <EditText
+            android:id="@+id/output_file_path"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+    </LinearLayout>
+    
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:weightSum="2" >
+
+        <Button
+            android:id="@+id/set_ok"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@android:string/ok"
+            android:enabled="true" />
+
+        <Button
+            android:id="@+id/set_cancel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@android:string/cancel" />
+    </LinearLayout>
+
+</RelativeLayout>

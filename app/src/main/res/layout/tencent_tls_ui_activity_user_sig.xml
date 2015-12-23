@@ -1,0 +1,44 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="10dp"
+    android:paddingRight="10dp"
+    android:paddingTop="10dp"
+    android:paddingBottom="10dp"
+    android:orientation="vertical"
+    android:background="@color/tencent_tls_ui_background"
+    tools:context=".UserSigActivity">
+
+    <TextView
+        android:id="@+id/textView_sdkVersion"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="SDK Version: 1.0"/>
+
+    <TextView
+        android:id="@+id/textView_userId"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="UserID: 86-xxxxxxxxxxx"/>
+
+    <TextView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="UserSig:"/>
+
+    <TextView
+        android:id="@+id/textView_userSig"
+        android:layout_width="fill_parent"
+        android:layout_height="200dp" />
+
+    <Button
+        android:id="@+id/button_freshUserSig"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/tencent_tls_ui_btn_blue_bg"
+        android:textColor="@color/tencent_tls_ui_white"
+        android:layout_marginTop="40dp"
+        android:text="刷新票据"/>
+
+</LinearLayout>
