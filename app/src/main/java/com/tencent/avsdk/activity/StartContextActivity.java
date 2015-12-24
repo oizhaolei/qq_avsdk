@@ -19,8 +19,6 @@ import com.tencent.avsdk.QavsdkApplication;
 import com.tencent.avsdk.R;
 import com.tencent.avsdk.Util;
 import com.tencent.avsdk.control.QavsdkControl;
-import com.tencent.tls.TLSConfiguration;
-import com.tencent.tls.TLSService;
 
 import java.util.ArrayList;
 
@@ -40,8 +38,8 @@ public class StartContextActivity extends ListActivity {
     private QavsdkControl mQavsdkControl;
     private ArrayList<String> mArrayList = new ArrayList<String>();
     private Context ctx = null;
-    private String loginInfoUrl = "http://bbs.qcloud.com/forum.php?mod=viewthread&tid=8287&extra=page%3D1%26filter%3Dsortid%26sortid%3D6%26sortid%3D6";
-    private TLSService tlsService;
+//    private String loginInfoUrl = "http://bbs.qcloud.com/forum.php?mod=viewthread&tid=8287&extra=page%3D1%26filter%3Dsortid%26sortid%3D6%26sortid%3D6";
+//    private TLSService tlsService;
 
     private boolean testEnvStatus = false;
 
@@ -96,21 +94,21 @@ public class StartContextActivity extends ListActivity {
         registerReceiver(mBroadcastReceiver, intentFilter);
         mQavsdkControl = ((QavsdkApplication) getApplication())
                 .getQavsdkControl();
-        // 设置使用TLS SDK所需的配置信息
-        TLSConfiguration.setSdkAppid(1400001862); // 必须项, sdkAppid, 1400000955,
-        // 1400001285, 101122465
-        TLSConfiguration.setAccountType(1019); // 必须项, accountType, 373, 117, 107
-        TLSConfiguration.setAppVersion("1.0"); // 可选项, 表示app当前版本, 默认为1.0
-        TLSConfiguration.setTimeout(3000); // 可选项, 表示网络操作超时时间, 默认为8s
-
-        // 设置QQ APP_ID和APP_KEY
-        TLSConfiguration.setQqAppIdAndAppKey("1104701569", "CXtj4p63eTEB2gSu");
-
-        // 设置微信APP_ID和APP_SECRET
-        TLSConfiguration.setWxAppIdAndAppSecret("wxc05322d5f11ea2b0", "3ace67c5982c6ed8daa36f8911f609d7");
-
-        tlsService = TLSService.getInstance();
-        tlsService.initTlsSdk(StartContextActivity.this); // 需要使用关于短信或字符串账号密码登录注册服务时调用
+//        // 设置使用TLS SDK所需的配置信息
+//        TLSConfiguration.setSdkAppid(1400001862); // 必须项, sdkAppid, 1400000955,
+//        // 1400001285, 101122465
+//        TLSConfiguration.setAccountType(1019); // 必须项, accountType, 373, 117, 107
+//        TLSConfiguration.setAppVersion("1.0"); // 可选项, 表示app当前版本, 默认为1.0
+//        TLSConfiguration.setTimeout(3000); // 可选项, 表示网络操作超时时间, 默认为8s
+//
+//        // 设置QQ APP_ID和APP_KEY
+//        TLSConfiguration.setQqAppIdAndAppKey("1104701569", "CXtj4p63eTEB2gSu");
+//
+//        // 设置微信APP_ID和APP_SECRET
+//        TLSConfiguration.setWxAppIdAndAppSecret("wxc05322d5f11ea2b0", "3ace67c5982c6ed8daa36f8911f609d7");
+//
+//        tlsService = TLSService.getInstance();
+//        tlsService.initTlsSdk(StartContextActivity.this); // 需要使用关于短信或字符串账号密码登录注册服务时调用
     }
 
     @Override
