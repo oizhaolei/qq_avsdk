@@ -1,7 +1,10 @@
 package com.tencent.avsdk.control;
 
+import java.util.ArrayList;
+
 import com.tencent.av.sdk.AVEndpoint;
 import com.tencent.av.sdk.AVRoomMulti;
+import com.tencent.av.sdk.AVView;
 import com.tencent.avsdk.MultiVideoMembersControlUI;
 import com.tencent.avsdk.MultiVideoMembersControlUI.MultiVideoMembersClickListener;
 import com.tencent.avsdk.QavsdkApplication;
@@ -15,6 +18,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.RelativeLayout.LayoutParams;
 import android.widget.Toast;
+import com.tencent.av.sdk.AVConstants;
 
 class AVEndpointControl {
 	private static final String TAG = "AVEndpointControl";
@@ -23,16 +27,25 @@ class AVEndpointControl {
 	private String mRemoteVideoIdentifier = "";
 	
 	//多路画面相关
-	private static final int MAX_REQUEST_VIEW_COUNT = 4;//当前最大支持请求画面个数
+	
 	private String mRequestIdentifierList[] = null;
-	private AVEndpoint.View mRequestViewList[] = null;
+	private AVView mRequestViewList[] = null;
 	private int mRequestCount = 0;
-	private boolean mIsSupportMultiView = false;
+	private boolean mIsSupportMultiView = true;
+	
+	public void setIsSupportMultiView(boolean isSupport) {
+		mIsSupportMultiView = true;
+	}
+	
+	public boolean getIsSupportMultiView() {
+		return mIsSupportMultiView;
+	}
 	
 	private MultiVideoMembersClickListener mMembersOnClickListener = new MultiVideoMembersClickListener() {
 		@Override
-		public void onMembersClick(final String identifier, final int videoSrcType, final boolean needRequest) 
+		public void onMembersClick(final String identifier, final int videoSrcType) 
 		{
+			Log.d("onMembersClick", "mIsSupportMultiView: " + mIsSupportMultiView);
 			QavsdkControl qavsdkControl = ((QavsdkApplication) mContext).getQavsdkControl();
 			AVEndpoint endpoint = ((AVRoomMulti) qavsdkControl.getRoom()).getEndpointById(identifier);
 			if (endpoint == null)
@@ -49,54 +62,37 @@ class AVEndpointControl {
 			
 			if(!mIsSupportMultiView)
 			{
-				if(mRemoteHasVideo && mRemoteVideoIdentifier.endsWith(identifier))
-				{
-					endpoint.cancelView(videoSrcType, mCancelViewCompleteCallback);
-					mContext.sendBroadcast(new Intent(
-							Util.ACTION_VIDEO_CLOSE).putExtra(
-							Util.EXTRA_IDENTIFIER, identifier).putExtra(
-							Util.EXTRA_VIDEO_SRC_TYPE, videoSrcType));
-					mRemoteHasVideo = false;
-					mRemoteVideoIdentifier = "";
-				}
-				else
-				{
-					AVEndpoint.View view = new AVEndpoint.View();
-					view.videoSrcType = AVEndpoint.View.VIDEO_SRC_TYPE_CAMERA;//SDK1.2版本只支持摄像头视频源，所以当前只能设置为VIDEO_SRC_TYPE_CAMERA。
-					view.viewSizeType = AVEndpoint.View.VIEW_SIZE_TYPE_BIG;
-					
-					endpoint.requestView(view, mRequestViewCompleteCallback);
-					mContext.sendBroadcast(new Intent(
-							Util.ACTION_VIDEO_SHOW).putExtra(
-							Util.EXTRA_IDENTIFIER, identifier).putExtra(
-							Util.EXTRA_VIDEO_SRC_TYPE, view.videoSrcType));
-					mRemoteHasVideo = true;	
-					mRemoteVideoIdentifier = identifier;
-				}
+				
 			}
 			else
 			{
 				boolean hasRequest = false;
-				for(int i = 0; i < mRequestCount; i++)
+				int index = 0;
+				for(index = 0; index < mRequestCount; index++)
 				{
-					if(mRequestIdentifierList[i].equals(identifier))
+					if(mRequestIdentifierList[index].equals(identifier) && mRequestViewList[index].videoSrcType == videoSrcType)
 					{
 						hasRequest = true;
 						break;
 					}
 				}
 				
-				if(hasRequest)//注意：已经请求过这个人了，再点击这个人的头像，这边为了方便测试，就先当作要去取消画面，而且是取消所有人的画面
+				if(hasRequest)
 				{
-					AVEndpoint.cancelAllView(mCancelAllViewCompleteCallback);
-					for(int i = 0; i < mRequestCount; i++)
-					{
-						mContext.sendBroadcast(new Intent(
-								Util.ACTION_VIDEO_CLOSE).putExtra(
-								Util.EXTRA_IDENTIFIER, mRequestIdentifierList[i]).putExtra(
-								Util.EXTRA_VIDEO_SRC_TYPE, mRequestViewList[i].videoSrcType));
+					mContext.sendBroadcast(new Intent(
+							Util.ACTION_VIDEO_CLOSE).putExtra(
+							Util.EXTRA_IDENTIFIER, mRequestIdentifierList[index]).putExtra(
+							Util.EXTRA_VIDEO_SRC_TYPE, mRequestViewList[index].videoSrcType));
+					
+					if (!deleteRequestView(index)) {
+						return;
 					}
-					mRequestCount = 0;
+					
+					if (0 != mRequestCount) {
+						AVEndpoint.requestViewList(mRequestIdentifierList, mRequestViewList, mRequestCount, mRequestViewListCompleteCallback);
+					} else {
+						AVEndpoint.cancelAllView(mCancelAllViewCompleteCallback);
+					}
 				}
 				else
 				{
@@ -112,14 +108,11 @@ class AVEndpointControl {
 					. RequestViewList与CancelAllView配对使用，不能与RequestView和CancelView交叉使用。
 					*/
 					
-					for(int i = 0; i < mRequestCount; i++)
-					{
-						mRequestViewList[i].viewSizeType = AVEndpoint.View.VIEW_SIZE_TYPE_SMALL;
-					}
 					
-					AVEndpoint.View view = new AVEndpoint.View();
-					view.videoSrcType = AVEndpoint.View.VIDEO_SRC_TYPE_CAMERA;//SDK1.2版本只支持摄像头视频源，所以当前只能设置为VIDEO_SRC_TYPE_CAMERA。
-					view.viewSizeType = AVEndpoint.View.VIEW_SIZE_TYPE_BIG;
+					
+					AVView view = new AVView();
+					view.videoSrcType = videoSrcType;
+					view.viewSizeType = AVView.VIEW_SIZE_TYPE_BIG;
 					
 					mRequestViewList[mRequestCount] = view;
 					mRequestIdentifierList[mRequestCount] = identifier;
@@ -139,20 +132,6 @@ class AVEndpointControl {
 		public void onMembersHolderTouch() {
 		}
 	};
-
-	private AVEndpoint.CancelViewCompleteCallback mCancelViewCompleteCallback = new AVEndpoint.CancelViewCompleteCallback() {
-		protected void OnComplete(String identifier, int result) {
-			// TODO
-			Log.d(TAG, "CancelViewCompleteCallback.OnComplete");
-		}
-	};
-
-	private AVEndpoint.RequestViewCompleteCallback mRequestViewCompleteCallback = new AVEndpoint.RequestViewCompleteCallback() {
-		protected void OnComplete(String identifier, int result) {
-			// TODO
-			Log.d(TAG, "RequestViewCompleteCallback.OnComplete");
-		}
-	};
 	
 	private AVEndpoint.CancelAllViewCompleteCallback mCancelAllViewCompleteCallback = new AVEndpoint.CancelAllViewCompleteCallback() {
 		protected void OnComplete(int result) {
@@ -162,7 +141,7 @@ class AVEndpointControl {
 	};
 
 	private AVEndpoint.RequestViewListCompleteCallback mRequestViewListCompleteCallback = new AVEndpoint.RequestViewListCompleteCallback() {
-		protected void OnComplete(String identifierList[], int count, int result) {
+		protected void OnComplete(String identifierList[], AVView viewList[], int count, int result) {
 			// TODO
 			Log.d(TAG, "RequestViewListCompleteCallback.OnComplete");
 		}
@@ -170,8 +149,8 @@ class AVEndpointControl {
 
 	AVEndpointControl(Context context) {
 		mContext = context;
-		mRequestIdentifierList = new String[MAX_REQUEST_VIEW_COUNT];
-		mRequestViewList = new AVEndpoint.View[MAX_REQUEST_VIEW_COUNT];
+		mRequestIdentifierList = new String[AVView.MAX_VIEW_COUNT];
+		mRequestViewList = new AVView[AVView.MAX_VIEW_COUNT];
 		mRequestCount = 0;
 	}
 
@@ -208,22 +187,15 @@ class AVEndpointControl {
 	/**
 	 * 关闭远程视频
 	 */
-	void closeRemoteVideo() {
+	public void closeRemoteVideo() {
 		QavsdkControl qavsdkControl = ((QavsdkApplication) mContext)
 				.getQavsdkControl();
 		AVRoomMulti avRoomMulti = ((AVRoomMulti) qavsdkControl.getRoom());
 		if (avRoomMulti != null) {
 			if(!mIsSupportMultiView)
-			{
-				if(!mRemoteVideoIdentifier.equals(""))
-				{
-					AVEndpoint endpoint = avRoomMulti
-							.getEndpointById(mRemoteVideoIdentifier);
-		
-					if (endpoint != null) {
-						endpoint.cancelView(AVEndpoint.View.VIDEO_SRC_TYPE_CAMERA, mCancelViewCompleteCallback);
-					}
-				}				
+			{				
+				mRemoteHasVideo = false;
+				mRemoteVideoIdentifier = "";
 			}
 			else
 			{
@@ -232,5 +204,69 @@ class AVEndpointControl {
 		}
 
 		mContext.sendBroadcast(new Intent(Util.ACTION_VIDEO_CLOSE));
+	}
+	
+	private boolean deleteRequestView(int index){
+		ArrayList<String> requestIdentifierArrayList = new ArrayList<String>();
+		ArrayList<AVView> requestViewArrayList = new ArrayList<AVView>();
+		
+		if (index < 0 || index >= mRequestCount) {
+			return false;
+		}
+		for(int i = 0; i < mRequestCount; i++){
+			if(i != index){
+				requestIdentifierArrayList.add(mRequestIdentifierList[i]);
+				requestViewArrayList.add(mRequestViewList[i]);
+			}
+		}
+		
+		mRequestIdentifierList = requestIdentifierArrayList.toArray(new String[AVView.MAX_VIEW_COUNT]);
+		mRequestViewList = requestViewArrayList.toArray(new AVView[AVView.MAX_VIEW_COUNT]);
+		mRequestCount--;
+		
+		return true;
+	}
+	
+	public void deleteRequestView(String identifier, int videoSrcType){
+		if (TextUtils.isEmpty(identifier)) {
+			return;
+		}
+		
+		boolean hasRequest = false;
+		
+		int index = 0;
+		for(index = 0; index < mRequestCount; index++)
+		{
+			if(mRequestIdentifierList[index].equals(identifier) && mRequestViewList[index].videoSrcType == videoSrcType)
+			{
+				hasRequest = true;
+				break;
+			}
+		}
+		
+		if (hasRequest)
+		{
+			deleteRequestView(index);
+		}
+	}
+	
+	public void clearRequestList() {
+		mRequestIdentifierList = new String[AVView.MAX_VIEW_COUNT];
+		mRequestViewList = new AVView[AVView.MAX_VIEW_COUNT];
+		mRequestCount = 0;
+	}
+	
+	public boolean isInRequestList(String identifier, int videoSrcType) {
+		if (TextUtils.isEmpty(identifier) || videoSrcType == AVView.VIDEO_SRC_TYPE_NONE) {
+			return false;
+		}
+		
+		for (int i = 0; i < mRequestCount; i++) {
+			if (mRequestIdentifierList[i].equals(identifier) && mRequestViewList[i].videoSrcType == videoSrcType) {
+				return true;
+			}
+		}
+		
+		return false;
 	}
 }

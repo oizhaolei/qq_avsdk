@@ -14,6 +14,8 @@ import com.tencent.av.opengl.ui.GLRootView;
 import com.tencent.av.opengl.ui.GLView;
 import com.tencent.av.opengl.utils.Utils;
 import com.tencent.av.utils.QLog;
+import com.tencent.av.sdk.AVConstants;
+import com.tencent.av.sdk.AVView;
 
 public class GLVideoView extends GLView {
 
@@ -429,7 +431,7 @@ public class GLVideoView extends GLView {
 	}
 
 	public void setRender(String identifier, int videoSrcType) {
-		if (null == identifier) {
+		if (null == identifier || videoSrcType == AVView.VIDEO_SRC_TYPE_NONE) {
 			mIdentifier = null;
 			mVideoSrcType = 0;
 			return;

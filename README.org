@@ -1,17 +1,23 @@
+#+OPTIONS: ^:nil
+#+TITLE: AV_Android_SDK
 
-AV_Android_SDK
-
-基于互动直播ILVB 1.5版本开发
-
-该sample用于演示音视频通讯类的应用场景
-
-修改Util.java
+* 基于互动直播ILVB 1.6版本开发
+** 该sample用于演示音视频通讯类的应用场景
+* 运行
+** 修改Util.java
+#+begin_src java
     public static int APP_ID_TEXT = 1400002371;
     public static String UID_TYPE = "1317";
+#+end_src
+** 建立文件app/src/main/res/values/arrays.xml，使用tls生成sig
 
+#+begin_src sh
+$ tls_signature './TLS_1400002371_1317_private_key' '2592000' '1400002371' '1317' '1400002371' 'u_139957'
+#+end_src
 
-建立文件app/src/main/res/values/arrays.xml，使用tls生成sig
+结果填写到openkey_list里面
 
+#+begin_src xml
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
@@ -26,3 +32,4 @@ AV_Android_SDK
         <item>eJx1kE9PgzAchu98CsJ1xkGhY5h4mHOZrGJU8A*nhpSiP2GsLWV3F1xiL77X50me5P2ybNt2stv0vGBs07ea6r3gjn1hO57vhc7ZHxcCSlpo6qvylwfuccgPPcPiOwGK06LSXA0WwhE6aoYCJW81VHASeur5UYTNVFfWdMj93*ngbYDJ4mke39QP6Yi-kqDuslzWL1K6yV7iBjMcC5k*jgi-z1hP*tV0BovZuFneHa4xnhOpJytyWMfvn2r5geCKiaQZu36Odl6B4ucqvzSSGtanYwLsBtPQRRODbrnqYNMOgmN9Wz8631y5</item>
     </string-array>
 </resources>
+#+end_src

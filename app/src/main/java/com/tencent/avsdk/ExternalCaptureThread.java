@@ -54,7 +54,7 @@ public class ExternalCaptureThread extends Thread {
 					QavsdkControl qavsdk = ((QavsdkApplication) applicationCtx)
 							.getQavsdkControl();
 					AVVideoCtrl avVideoCtrl = qavsdk.getAVContext()
-							.getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
+							.getVideoCtrl();
 					avVideoCtrl.fillExternalCaptureFrame(bytesInOneFrame, frameBytesNumber,
 							Util.yuvWide, Util.yuvHigh, 0, Util.yuvFormat, 1);
 					sleep(40);

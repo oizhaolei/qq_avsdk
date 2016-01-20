@@ -34,7 +34,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
-
+import com.tencent.av.sdk.AVView;
 import com.tencent.av.sdk.AVConstants;
 import com.tencent.avsdk.control.QavsdkControl;
 
@@ -44,8 +44,7 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 	boolean mAttached = false;
 
 	public interface MultiVideoMembersClickListener {
-		public void onMembersClick(final String identifier, final int videoSrcType,
-				final boolean needRequest);
+		public void onMembersClick(final String identifier, final int videoSrcType);
 
 		public void onMembersHolderTouch();
 	}
@@ -66,7 +65,7 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 	private int mCurrentPage = 0;
 	private int mTotalPageNum = 1;
 	private String mSelectedIdentifier = null;
-	private int mSelectedVideoSrcType = AVConstants.VIDEO_SRC_UNKNOWN;
+	private int mSelectedVideoSrcType = AVView.VIDEO_SRC_TYPE_NONE;
 
 	private int mMode = MODE_TWO_LINE;
 	private int mMaxPageNum = MAX_PAGE_MEMBERS_NUM_TWO_LINE;
@@ -88,6 +87,7 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 		@Override
 		public void onReceive(Context context, Intent intent) {
 			String action = intent.getAction();
+			Log.d(TAG, "WL_DEBUG MultiVideoMembersControlUI action= " + action);
 
 			if (action.equals(Util.ACTION_MEMBER_CHANGE)) {
 				notifyDataSetChanged(mQavsdkControl.getMemberList());
@@ -140,6 +140,33 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 
 	private void refreshDataSource() {
 		initPages();
+		
+		initParas();
+	}
+	
+	private void initParas() {
+		Log.d(TAG, "WL_DEBUG initPages mSelectedIdentifi ");
+		if (mSelectedIdentifier == null) {
+			return;
+		}
+		
+		Log.d(TAG, "WL_DEBUG initPages mSelectedIdentifi not null");
+		
+		boolean isExist = false;
+		ArrayList<MemberInfo> membersList = mQavsdkControl.getMemberList();
+		int size = membersList.size();
+		for (int i = 0; i < size; i++) {
+			if (membersList.get(i).identifier.equals(mSelectedIdentifier)) {
+				isExist = true;
+				break;
+			}
+		}
+		
+		Log.d(TAG, "WL_DEBUG MultiVideoMembersControlUI isExist = " + isExist);
+		if (!isExist) {
+			mSelectedIdentifier = null;
+			mQavsdkControl.closeRemoteVideo();
+		}
 	}
 
 	private void initPages() {
@@ -274,6 +301,9 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 		if (friends != null) {
 			refreshDataSource();
 			fireDataChange();
+		} else {
+			mSelectedIdentifier = null;
+			mQavsdkControl.closeRemoteVideo();
 		}
 	}
 
@@ -488,9 +518,15 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 			if (friend.name != null && friend.name.equals(mQavsdkControl.getSelfIdentifier())) {
 				friend.name = MultiVideoMembersControlUI.this.getContext().getString(R.string.me);
 			}
-
-			convertView = assembleConvertView(convertView, friend,
-					friend.identifier.equals(mSelectedIdentifier));
+			
+			if (mSelectedIdentifier == null) {
+				convertView = assembleConvertView(convertView, friend,
+						false);
+			} else {
+				convertView = assembleConvertView(convertView, friend,
+						friend.identifier.equals(mSelectedIdentifier));
+			}
+			
 			return convertView;
 		}
 
@@ -515,9 +551,23 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 			} else {
 				holder = (Holder) view.getTag();
 			}
+			
+			//多人画面是否加cover取决于该成员的画面是否能看到
+			if (mQavsdkControl.getIsSupportMultiView()) {
+				int videoSrcType = AVView.VIDEO_SRC_TYPE_NONE;
+				if(info.hasCameraVideo)videoSrcType = AVView.VIDEO_SRC_TYPE_CAMERA;
+				else if(info.hasScreenVideo)videoSrcType = AVView.VIDEO_SRC_TYPE_SCREEN;
+				else videoSrcType = AVView.VIDEO_SRC_TYPE_NONE;
 
-			holder.isSelected = isSelected;
-			holder.speaking = info.isSpeaking;
+				if (mQavsdkControl.isInRequestList(info.identifier, videoSrcType)) {
+					holder.isSelected = true;
+				} else {
+					holder.isSelected = false;
+				}
+			} else {
+				holder.isSelected = isSelected;
+			}
+			holder.speaking = info.hasAudio;
 			holder.acc_type = ACC_TEXT_TYPE.NONE;
 
 			if (info.name != null) {
@@ -538,57 +588,40 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 			}
 
 			// 添加蒙层
-			if (info.isShareSrc) {
-				holder.cover.setVisibility(View.VISIBLE);
-				holder.cover.setImageResource(R.drawable.qav_screen_press);
-				holder.acc_type = ACC_TEXT_TYPE.REQUEST_SCREEN;
-
-			} else if (info.isVideoIn) {
+			if (info.hasCameraVideo) 
+			{
 				holder.cover.setVisibility(View.VISIBLE);
 				holder.cover.setImageResource(R.drawable.qav_camera_press);
 				holder.acc_type = ACC_TEXT_TYPE.REQUEST_VIDEO;
-			} else if (info.isShareMovie) {
+			}
+			else if (info.hasScreenVideo) 
+			{
 				holder.cover.setVisibility(View.VISIBLE);
-				holder.cover
-						.setImageResource(R.drawable.qav_gaudio_share_movie_press);
-				holder.acc_type = ACC_TEXT_TYPE.REQUEST_MOVIE;
-			} else {
+				holder.cover.setImageResource(R.drawable.qav_screen_press);
+				holder.acc_type = ACC_TEXT_TYPE.REQUEST_SCREEN;
+			}   
+			else 
+			{
 				holder.cover.setVisibility(View.GONE);
 			}
 
 			// 增加选中态
-			if (holder.isSelected) {
-				if (info.isShareSrc && info.isVideoIn) {
-					if (mSelectedVideoSrcType == AVConstants.VIDEO_SRC_CAMERA) {
-						holder.cover.setVisibility(View.VISIBLE);
-						holder.cover
-								.setImageResource(R.drawable.qav_gvideo_screen_normal);
-						holder.acc_type = ACC_TEXT_TYPE.PLAYING_VIDEO;
-					} else if (mSelectedVideoSrcType == AVConstants.VIDEO_SRC_SHARESCREEN) {
-						holder.cover.setVisibility(View.VISIBLE);
-						holder.cover
-								.setImageResource(R.drawable.qav_gvideo_camera_normal);
-						holder.acc_type = ACC_TEXT_TYPE.PLAYING_SCREEN;
-					} else {
-						// holder.selected.setVisibility(View.GONE);
-					}
-				} else if (info.isShareSrc) {
+			if (holder.isSelected) 
+			{
+				if (info.hasCameraVideo) 
+				{
 					holder.cover.setVisibility(View.VISIBLE);
-					holder.cover
-							.setImageResource(R.drawable.qav_gvideo_screen_normal);
-					holder.acc_type = ACC_TEXT_TYPE.PLAYING_SCREEN;
-
-				} else if (info.isVideoIn) {
-					holder.cover.setVisibility(View.VISIBLE);
-					holder.cover
-							.setImageResource(R.drawable.qav_gvideo_camera_normal);
+					holder.cover.setImageResource(R.drawable.qav_gvideo_camera_normal);
 					holder.acc_type = ACC_TEXT_TYPE.PLAYING_VIDEO;
-				} else if (info.isShareMovie) {
+				} 
+				else if (info.hasScreenVideo) 
+				{
 					holder.cover.setVisibility(View.VISIBLE);
-					holder.cover
-							.setImageResource(R.drawable.qav_share_movie_select);
-					holder.acc_type = ACC_TEXT_TYPE.PLAYING_MOVIE;
-				} else {
+					holder.cover.setImageResource(R.drawable.qav_gvideo_screen_normal);
+					holder.acc_type = ACC_TEXT_TYPE.PLAYING_SCREEN;
+				} 
+				else 
+				{
 					// holder.selected.setVisibility(View.GONE);
 				}
 			}
@@ -598,24 +631,19 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 				view.setContentDescription(null);
 				break;
 			case ACC_TEXT_TYPE.PLAYING_SCREEN:
-				view.setContentDescription(mResources
-						.getString(R.string.gvideo_play_screen_acc_txt));
+				view.setContentDescription(mResources.getString(R.string.gvideo_play_screen_acc_txt));
 				break;
 			case ACC_TEXT_TYPE.PLAYING_VIDEO:
-				view.setContentDescription(mResources
-						.getString(R.string.gvideo_play_video_acc_txt));
+				view.setContentDescription(mResources.getString(R.string.gvideo_play_video_acc_txt));
 				break;
 			case ACC_TEXT_TYPE.REQUEST_SCREEN:
-				view.setContentDescription(mResources
-						.getString(R.string.gvideo_request_screen_acc_txt));
+				view.setContentDescription(mResources.getString(R.string.gvideo_request_screen_acc_txt));
 				break;
 			case ACC_TEXT_TYPE.REQUEST_VIDEO:
-				view.setContentDescription(mResources
-						.getString(R.string.gvideo_request_video_acc_txt));
+				view.setContentDescription(mResources.getString(R.string.gvideo_request_video_acc_txt));
 				break;
 			case ACC_TEXT_TYPE.SPEAKING:
-				view.setContentDescription(mResources
-						.getString(R.string.gvideo_speaking_acc_txt));
+				view.setContentDescription(mResources.getString(R.string.gvideo_speaking_acc_txt));
 				break;
 			default:
 				view.setContentDescription(null);
@@ -706,27 +734,32 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 
 			if (id == mMaxPageNum * MAX_PAGE_NUM - 1) {
 				if (mMemberClickListener != null) {
-					mMemberClickListener.onMembersClick(null, 0, true);
+					mMemberClickListener.onMembersClick(null, 0);
 				}
 				return;
 			}
 			ArrayList<MemberInfo> membersList = mQavsdkControl.getMemberList();
-			MemberInfo info = membersList.get(index);
-			boolean needRequest = setSelectedItem(info, index);
-			int videoSrcType = AVConstants.VIDEO_SRC_UNKNOWN;
-
-			if (!needRequest && !info.isShareSrc && !info.isVideoIn) {
-				videoSrcType = AVConstants.VIDEO_SRC_UNKNOWN;
-			} else {
-				videoSrcType = mSelectedVideoSrcType;
+			MemberInfo info = membersList.get(index);			
+			
+			if (info.hasCameraVideo) 
+			{
+				mSelectedVideoSrcType = AVView.VIDEO_SRC_TYPE_CAMERA;
+			} 
+			else if (info.hasScreenVideo) 
+			{
+				mSelectedVideoSrcType = AVView.VIDEO_SRC_TYPE_SCREEN;
+			} 
+			else 
+			{				
+				return ;
 			}
 
-			if (mMemberClickListener != null && info.isVideoIn) {
-				mMemberClickListener.onMembersClick(info.identifier, videoSrcType,
-						needRequest);
+
+			if (mMemberClickListener != null && (info.hasCameraVideo || info.hasScreenVideo)) {
+				mMemberClickListener.onMembersClick(info.identifier, mSelectedVideoSrcType);
 			}
 
-			if (!info.isShareSrc && !info.isVideoIn) {
+			if (!(info.hasCameraVideo || info.hasScreenVideo)) {
 				Animation animation = AnimationUtils.loadAnimation(
 						getContext(), R.anim.qav_member_click_animition);
 				view.startAnimation(animation);
@@ -767,41 +800,6 @@ public class MultiVideoMembersControlUI extends RelativeLayout {
 				mPageIndicator.getChildAt(i).setSelected(true);
 			}
 		}
-	}
-
-	private boolean setSelectedItem(MemberInfo item, int index) {
-		if (item == null) {
-			Log.e(TAG, "setSelectedItem-->Item is null");
-			return false;
-		}
-
-		int src = AVConstants.VIDEO_SRC_UNKNOWN;
-		if (item.identifier.equals(mSelectedIdentifier)) {
-			// 已经被选中过，只处理video和share互切
-			if (!(item.isVideoIn && item.isShareSrc)) {
-				return false;
-			}
-			if (mSelectedVideoSrcType == AVConstants.VIDEO_SRC_CAMERA) {
-				src = AVConstants.VIDEO_SRC_SHARESCREEN;
-			} else if (mSelectedVideoSrcType == AVConstants.VIDEO_SRC_SHARESCREEN) {
-				src = AVConstants.VIDEO_SRC_CAMERA;
-			} else {
-				Log.e(TAG, "WRONG TYPE OF VIDEOSRC");
-				return false;
-			}
-		} else {
-			if (item.isShareSrc) {
-				src = AVConstants.VIDEO_SRC_SHARESCREEN;
-			} else if (item.isVideoIn) {
-				src = AVConstants.VIDEO_SRC_CAMERA;
-			} else {
-				src = AVConstants.VIDEO_SRC_UNKNOWN;
-				return false;
-			}
-		}
-		mSelectedIdentifier = item.identifier;
-		mSelectedVideoSrcType = src;
-		return true;
 	}
 
 	@Override

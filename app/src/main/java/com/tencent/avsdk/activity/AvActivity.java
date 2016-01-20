@@ -33,7 +33,9 @@ import android.widget.Toast;
 import com.tencent.av.sdk.AVAudioCtrl;
 import com.tencent.av.sdk.AVConstants;
 import com.tencent.av.sdk.AVError;
+import com.tencent.av.sdk.AVView;
 import com.tencent.av.utils.PhoneStatusTools;
+import com.tencent.avsdk.DemoConstants;
 import com.tencent.avsdk.ExternalCaptureThread;
 import com.tencent.avsdk.MyCheckable;
 import com.tencent.avsdk.QavsdkApplication;
@@ -58,6 +60,8 @@ public class AvActivity extends Activity implements OnClickListener {
 	private static final int DIALOG_AT_ON_EXTERNAL_CAPTURE_FAILED = DIALOG_AT_ON_EXTERNAL_CAPTURE + 1;
 	private static final int DIALOG_AT_OFF_EXTERNAL_CAPTURE = DIALOG_AT_ON_EXTERNAL_CAPTURE_FAILED + 1;
 	private static final int DIALOG_AT_OFF_EXTERNAL_CAPTURE_FAILED = DIALOG_AT_OFF_EXTERNAL_CAPTURE + 1;
+	private static final int DIALOG_CHANGE_AUTHRITY_OK = DIALOG_AT_OFF_EXTERNAL_CAPTURE_FAILED + 1;
+	private static final int DIALOG_CHANGE_AUTHRITY_FAILED = DIALOG_CHANGE_AUTHRITY_OK + 1;
 	
 	private boolean mIsPaused = false;
 	private int mOnOffCameraErrorCode = AVError.AV_OK;
@@ -91,26 +95,11 @@ public class AvActivity extends Activity implements OnClickListener {
 	private BroadcastReceiver connectionReceiver = new BroadcastReceiver() { 
 		@Override 
 		public void onReceive(Context context, Intent intent) { 
-			ConnectivityManager connectMgr = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE); 
-			NetworkInfo mobileInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_MOBILE); 
-			NetworkInfo wifiInfo = connectMgr.getNetworkInfo(ConnectivityManager.TYPE_WIFI); 
-			Log.e(TAG, "WL_DEBUG netinfo mobile = " + mobileInfo.isConnected() + ", wifi = " + wifiInfo.isConnected());	
-			
 			int netType = Util.getNetWorkType(ctx);
 			Log.e(TAG, "WL_DEBUG connectionReceiver getNetWorkType = " + netType);
 			mQavsdkControl.setNetType(netType);	
 			
-			if (!mobileInfo.isConnected() && !wifiInfo.isConnected()) { 
-				Log.e(TAG, "WL_DEBUG connectionReceiver no network = ");
-				// unconnect network 
-				// 暂时不关闭
-//				if (ctx instanceof Activity) {
-//					Toast.makeText(getApplicationContext(), ctx.getString(R.string.notify_no_network), Toast.LENGTH_SHORT).show();
-//					((Activity)ctx).finish();
-//				}
-			}else { 
-				// connect network 
-			} 
+
 		} 
 	};	
 	private MyCheckable mMuteCheckable = new MyCheckable(true) {
@@ -150,7 +139,7 @@ public class AvActivity extends Activity implements OnClickListener {
 			});
         }           
     }; 
-	private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
+    private BroadcastReceiver mBroadcastReceiver = new BroadcastReceiver() {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
@@ -160,15 +149,19 @@ public class AvActivity extends Activity implements OnClickListener {
 				locateCameraPreview();
 			} else if (action.equals(Util.ACTION_VIDEO_CLOSE)) {
 				String identifier = intent.getStringExtra(Util.EXTRA_IDENTIFIER);
-				if (!TextUtils.isEmpty(mRecvIdentifier)) {
-					mQavsdkControl.setRemoteHasVideo(false, mRecvIdentifier);			
+				int videoSrcType = intent.getIntExtra(Util.EXTRA_VIDEO_SRC_TYPE, AVView.VIDEO_SRC_TYPE_NONE);
+				mRecvIdentifier = identifier;
+				if (!TextUtils.isEmpty(mRecvIdentifier) && videoSrcType != AVView.VIDEO_SRC_TYPE_NONE) {
+					mQavsdkControl.setRemoteHasVideo(false, mRecvIdentifier, videoSrcType);			
 				}
-					
-				mRecvIdentifier = identifier;				
+													
 			} else if (action.equals(Util.ACTION_VIDEO_SHOW)) {
 				String identifier = intent.getStringExtra(Util.EXTRA_IDENTIFIER);
-				mRecvIdentifier = identifier;				
-				mQavsdkControl.setRemoteHasVideo(true, mRecvIdentifier);				
+				int videoSrcType = intent.getIntExtra(Util.EXTRA_VIDEO_SRC_TYPE, AVView.VIDEO_SRC_TYPE_NONE);
+				mRecvIdentifier = identifier;	
+				if (!TextUtils.isEmpty(mRecvIdentifier) && videoSrcType != AVView.VIDEO_SRC_TYPE_NONE) {			
+					mQavsdkControl.setRemoteHasVideo(true, mRecvIdentifier, videoSrcType);
+				}				
 			} else if (action.equals(Util.ACTION_ENABLE_CAMERA_COMPLETE)) {
 				refreshCameraUI();
 
@@ -216,8 +209,23 @@ public class AvActivity extends Activity implements OnClickListener {
 				}
 			} else if (action.equals(Util.ACTION_MEMBER_CHANGE)) {
 				mQavsdkControl.onMemberChange();
+			} else if (action.equals(Util.ACTION_CHANGE_AUTHRITY)) {
+				int result = intent.getIntExtra(Util.EXTRA_AV_ERROR_RESULT, AVError.AV_OK);
+				if (result == AVError.AV_OK) {
+					showDialog(DIALOG_CHANGE_AUTHRITY_OK);
+				}
+				else {
+					showDialog(DIALOG_CHANGE_AUTHRITY_FAILED);
+				}
 			} else if (action.equals(Util.ACTION_OUTPUT_MODE_CHANGE)) {
 				updateHandfreeButton();
+			} else if (action.equals(Util.ACTION_CLOSE_ROOM_COMPLETE)) {
+				if (isFinishing()) {
+					return;
+				} else {
+					AvActivity.this.setResult(DemoConstants.AUTO_EXIT_ROOM);
+					finish();
+				}
 			}
 		}
 	};

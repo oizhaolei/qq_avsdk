@@ -90,4 +90,12 @@
     <string name="notify_uid_empty">uid不能为空</string>    
     <string name="tips_show">打开tips</string>     
     <string name="tips_close">关闭tips</string>  
+    <string name="room_role_text">流控角色名</string> 
+    <string name="room_role_default">123</string> 
+     <string name="isAuthAudioSend">音频上行</string> 
+    <string name="isAuthAudioRev">音频下行</string> 
+    <string name="isAuthVideoSend">视频主路上行</string> 
+    <string name="isAuthVideoRev">视频主路下行</string> 
+    <string name="isSupportMultiVideo">是否支持多路视频输出</string>
+    <string name="isOpenBackCameraFirst">是否先打开后置摄像头</string>    
 </resources>

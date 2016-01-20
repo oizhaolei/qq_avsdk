@@ -12,6 +12,7 @@ import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Vector;
 
 import android.content.Context;
 import android.content.Intent;
@@ -23,7 +24,7 @@ import com.tencent.av.sdk.AVVideoCtrl;
 import com.tencent.av.sdk.AVVideoCtrl.EnableCameraCompleteCallback;
 import com.tencent.av.sdk.AVVideoCtrl.EnableExternalCaptureCompleteCallback;
 import com.tencent.av.sdk.AVVideoCtrl.RemoteVideoPreviewCallback;
-
+import com.tencent.av.sdk.AVVideoCtrl.RemoteScreenVideoPreviewCallback;
 import com.tencent.av.sdk.AVVideoCtrl.SwitchCameraCompleteCallback;
 import com.tencent.av.sdk.AVVideoCtrl.VideoFrame;
 import com.tencent.avsdk.QavsdkApplication;
@@ -41,6 +42,13 @@ public class AVVideoControl {
 	private static final int BACK_CAMERA = 1;
 	private boolean mIsOnOffExternalCapture = false;
 	private boolean mIsEnableExternalCapture = false;
+	
+	Vector<String> hasFileOpenIDList;
+
+	private boolean isOpenBackCameraFirst = false;
+	public void setIsOpenBackCameraFirst(boolean _isOpenBackCameraFirst) {
+		isOpenBackCameraFirst = _isOpenBackCameraFirst;
+	}
 
 	private EnableCameraCompleteCallback mEnableCameraCompleteCallback = new EnableCameraCompleteCallback() {
 		protected void onComplete(boolean enable, int result) {
@@ -99,9 +107,16 @@ public class AVVideoControl {
 
 		if (mIsEnableCamera != isEnable) {
 			QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-			AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
+			AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl();
 			mIsInOnOffCamera = true;
-			result = avVideoCtrl.enableCamera(FRONT_CAMERA,isEnable, mEnableCameraCompleteCallback);
+			
+			if (!isOpenBackCameraFirst) {
+				mIsFrontCamera = true;
+				result = avVideoCtrl.enableCamera(FRONT_CAMERA, isEnable, mEnableCameraCompleteCallback);
+			} else {
+				mIsFrontCamera = false;
+				result = avVideoCtrl.enableCamera(BACK_CAMERA, isEnable, mEnableCameraCompleteCallback);
+			}
 		}
 		Log.d(TAG, "WL_DEBUG enableCamera isEnable = " + isEnable);
 		Log.d(TAG, "WL_DEBUG enableCamera result = " + result);
@@ -113,7 +128,7 @@ public class AVVideoControl {
 		
 		if (mIsEnableExternalCapture != isEnable) {
 			QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-			AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
+			AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl();
 			mIsOnOffExternalCapture = true;
 			result = avVideoCtrl.enableExternalCapture(isEnable, mEnableExternalCaptureCompleteCallback);
 		}
@@ -128,7 +143,7 @@ public class AVVideoControl {
 
 		if (mIsFrontCamera != isFront) {
 			QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-			AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
+			AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl();
 			mIsInSwitchCamera = true;
 			result = avVideoCtrl.switchCamera(isFront ? FRONT_CAMERA : BACK_CAMERA, mSwitchCameraCompleteCallback);
 		}
@@ -139,15 +154,15 @@ public class AVVideoControl {
 	
 	void setRotation(int rotation) {
 		QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
+		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl();
 		avVideoCtrl.setRotation(rotation);
 		Log.e(TAG, "WL_DEBUG setRotation rotation = " + rotation);
 
 	}
 	String getQualityTips() {
 		QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
-		return avVideoCtrl.GetQualityTips();
+		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl();
+		return avVideoCtrl.getQualityTips();
 	}	
 
 	int toggleEnableCamera() {
@@ -159,18 +174,25 @@ public class AVVideoControl {
 		
 			Log.d(TAG, "real RemoteVideoPreviewCallback.onFrameReceive");
 			Log.d(TAG, "len: " + videoFrame.dataLen);
-			Log.d(TAG, "openid: " + videoFrame.openId);
+			Log.d(TAG, "identifier: " + videoFrame.identifier);
 			Log.d(TAG, "videoFormat: " + videoFrame.videoFormat);
 			Log.d(TAG, "width: " + videoFrame.width);
 			Log.d(TAG, "height: " + videoFrame.height);
 			
-			String printTxtPath =   Util.outputYuvFilePath + "/" + videoFrame.height + "_" + videoFrame.width + ".yuv" ;
+			String printTxtPath =   Util.outputYuvFilePath + "/" + videoFrame.height + "_" + videoFrame.width + "_" + videoFrame.identifier +".yuv" ;
 			Log.d("test", "printTxtPath: " + printTxtPath);
 			byte[] b = videoFrame.data;
 			DataOutputStream d;
 			try {
-				d = new DataOutputStream(new FileOutputStream(
+				if (!hasFileOpenIDList.contains(videoFrame.identifier))
+				{
+					d = new DataOutputStream(new FileOutputStream(
+							printTxtPath, false));
+					hasFileOpenIDList.add(videoFrame.identifier);
+				} else {
+					d = new DataOutputStream(new FileOutputStream(
 						printTxtPath, true));
+				}
 				d.write(b);
 				d.flush();
 			} catch (FileNotFoundException e1) {
@@ -187,7 +209,8 @@ public class AVVideoControl {
 	
 	public boolean StartRecordingVideo() {
 		QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
+		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl();
+		hasFileOpenIDList = new Vector<String>();
 		
 		return avVideoCtrl.setRemoteVideoPreviewCallback(remoteVideoPreviewCallback);
 		
@@ -241,19 +264,5 @@ public class AVVideoControl {
 		mIsInSwitchCamera = false;
 		mIsEnableExternalCapture = false;
 		mIsOnOffExternalCapture = false;
-	}
-	
-	public void setRenderCallback() {
-		QavsdkControl qavsdk = ((QavsdkApplication) mContext).getQavsdkControl();
-		AVVideoCtrl avVideoCtrl = qavsdk.getAVContext().getVideoCtrl(AVConstants.AV_VIDEO_CHANNEL_MAIN);
-//		avVideoCtrl.setRemoteVideoRenderFrameCallback(new RemoteVideoRenderFrameCallback() {
-//			@Override
-//			public void onRenderFrame(String identifer) {
-//				// TODO Auto-generated method stub
-//				super.onRenderFrame(identifer);
-//				Log.d("setRenderCal", "identifer: " + identifer);
-//			}
-//			
-//		});
 	}
 }

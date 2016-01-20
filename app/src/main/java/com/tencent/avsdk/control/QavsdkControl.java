@@ -22,13 +22,36 @@ public class QavsdkControl {
 	private AVVideoControl mAVVideoControl = null;
 	private AVAudioControl mAVAudioControl = null;
 
+	
+	
 	public QavsdkControl(Context context) {
 		mAVContextControl = new AVContextControl(context);
 		mAVRoomControl = new AVRoomControl(context);
 		mAVEndpointControl = new AVEndpointControl(context);
 		mAVVideoControl = new AVVideoControl(context);
 		mAVAudioControl = new AVAudioControl(context);
+		
 		Log.d(TAG, "WL_DEBUG QavsdkControl");
+	}
+	
+	public void setIsSupportMultiView(boolean isSupport) {
+		if (null != mAVEndpointControl) {
+			mAVEndpointControl.setIsSupportMultiView(isSupport);
+		}
+	}
+	
+	public boolean getIsSupportMultiView() {
+		if (null != mAVEndpointControl) {
+			return mAVEndpointControl.getIsSupportMultiView();
+		}
+		
+		return false;
+	}
+	
+	public void deleteRequestView(String identifier, int videoSrcType) {
+		if (null != mAVEndpointControl) {
+			mAVEndpointControl.deleteRequestView(identifier, videoSrcType);
+		}
 	}
 
 	/**
@@ -72,9 +95,9 @@ public class QavsdkControl {
 	 * @param relationId
 	 *            讨论组号
 	 */
-	public void enterRoom(int relationId) {
+	public void enterRoom(int relationId, String roomRole) {
 		if (mAVRoomControl != null) {
-			mAVRoomControl.enterRoom(relationId);		
+			mAVRoomControl.enterRoom(relationId, roomRole);		
 		}
 	}
 	
@@ -103,7 +126,21 @@ public class QavsdkControl {
 		return mAVRoomControl.getMemberList();	
 	}
 
-	AVRoom getRoom() {
+	public ArrayList<MemberInfo> getAudioAndCameraMemberList() {		
+		if (mAVRoomControl == null) {
+			return null;
+		} 
+		return mAVRoomControl.getAudioAndCameraMemberList();	
+	}
+
+	public ArrayList<MemberInfo> getScreenMemberList() {		
+		if (mAVRoomControl == null) {
+			return null;
+		} 
+		return mAVRoomControl.getScreenMemberList();	
+	}
+
+	public AVRoom getRoom() {
 		AVContext avContext = getAVContext();
 
 		return avContext != null ? avContext.getRoom() : null;
@@ -155,6 +192,14 @@ public class QavsdkControl {
 			return null;		
 		return mAVContextControl.getAVContext();
 	}
+	
+	public boolean isInRequestList(String identifier, int videoSrcType) {
+		if (null != mAVEndpointControl) {
+			return mAVEndpointControl.isInRequestList(identifier, videoSrcType);
+		}
+		
+		return false;
+	}
 
 
 	public void setRemoteHasVideo(String identifier, int videoSrcType, boolean isRemoteHasVideo) {
@@ -186,11 +231,22 @@ public class QavsdkControl {
 	}
 
 	public void onDestroy() {
-		mAVEndpointControl.closeRemoteVideo();
+		if (null != mAVAudioControl) {
+			mAVAudioControl.resetAudio();
+		}
+		closeRemoteVideo();
 		if (null != mAVUIControl) {
 			mAVUIControl.onDestroy();
 			mAVUIControl = null;
 		}
+		
+		if (null != mAVEndpointControl) {
+			mAVEndpointControl.clearRequestList();
+		}
+	}
+	
+	public void closeRemoteVideo() {
+		mAVEndpointControl.closeRemoteVideo();
 	}
 
 
@@ -199,9 +255,9 @@ public class QavsdkControl {
 			mAVUIControl.setLocalHasVideo(isLocalHasVideo, false, selfIdentifier);
 		}
 	}
-	public void setRemoteHasVideo(boolean isRemoteHasVideo, String identifier) {
+	public void setRemoteHasVideo(boolean isRemoteHasVideo, String identifier, int videoSrcType) {
 		if (null != mAVUIControl) {
-			mAVUIControl.setSmallVideoViewLayout(isRemoteHasVideo, identifier);
+			mAVUIControl.setSmallVideoViewLayout(isRemoteHasVideo, identifier, videoSrcType);
 		}
 	}
 	public void setSelfId(String key) {
@@ -232,6 +288,10 @@ public class QavsdkControl {
 		}
 		
 		return true;
+	}
+	
+	public void setIsOpenBackCameraFirst(boolean _isOpenBackCameraFirst) {
+		mAVVideoControl.setIsOpenBackCameraFirst(_isOpenBackCameraFirst);
 	}
 
 	public boolean getIsInOnOffCamera() {
@@ -321,8 +381,9 @@ public class QavsdkControl {
 		mAVRoomControl.setNetType(netType);
 	}
 	
-	public void setRenderCallback() {
-		mAVVideoControl.setRenderCallback();
+	public boolean changeAuthority(byte[] auth_buffer) {
+		return mAVRoomControl.changeAuthority(auth_buffer);
 	}
 	
+
 }

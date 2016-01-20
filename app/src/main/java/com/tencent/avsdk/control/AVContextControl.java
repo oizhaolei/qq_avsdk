@@ -5,8 +5,8 @@ import com.tencent.TIMManager;
 import com.tencent.TIMUser;
 import com.tencent.av.sdk.AVConstants;
 import com.tencent.av.sdk.AVContext;
-import com.tencent.av.sdk.AVError;
 import com.tencent.av.sdk.AVRoom;
+import com.tencent.av.sdk.AVError;
 import com.tencent.avsdk.Util;
 import com.tencent.openqq.IMAuthListener;
 import com.tencent.openqq.IMError;
@@ -21,7 +21,7 @@ import android.util.Log;
 class AVContextControl {
 	private static final String TAG = "AvContextControl";
 
- 	private boolean mIsInStartContext = false;
+	private boolean mIsInStartContext = false;
 	private boolean mIsInStopContext = false;
 	private Context mContext;
 	private AVContext mAVContext = null;
@@ -78,7 +78,8 @@ class AVContextControl {
 	 *            用户身份的校验信息
 	 */
 	int startContext(String identifier, String usersig) {
-		int result = AVError.AV_OK;		
+		int result = AVError.AV_OK;
+
 		if (!hasAVContext()) {			
 			Log.d(TAG, "WL_DEBUG startContext identifier = " + identifier);
 			Log.d(TAG, "WL_DEBUG startContext usersig = " + usersig);
@@ -89,7 +90,7 @@ class AVContextControl {
 			mConfig.app_id_at3rd = Integer.toString(Util.APP_ID_TEXT);
 			mConfig.identifier = identifier;
 			
-			mUserSig = usersig;
+			mUserSig = usersig;			
 			login();
 		}
 		
@@ -142,14 +143,16 @@ class AVContextControl {
 	{
 		//login
 //		TIMManager.getInstance().setEnv(1);
-		Log.d("login", "testEnvStatus: " + testEnvStatus);	
+		Log.d(TAG, "WL_DEBUG startContext login ");
 
 		if (testEnvStatus) {
 			TIMManager.getInstance().setEnv(1);
 		}
 		
-		//请确保TIMManager.getInstance().init()一定执行在主线程		
-		TIMManager.getInstance().init(mContext);	
+		//请确保TIMManager.getInstance().init()一定执行在主线程
+		TIMManager.getInstance().init(mContext,mConfig.sdk_app_id );	
+		
+		//TIMManager.getInstance().disableCrashReport();
 				
 		TIMUser userId = new TIMUser();
 		userId.setAccountType(Util.UID_TYPE);
@@ -166,29 +169,28 @@ class AVContextControl {
 		 * 
 		*/
 		TIMManager.getInstance().login(
-		    mConfig.sdk_app_id  ,
+		    mConfig.sdk_app_id,
 		    userId,
 		    mUserSig,
 		    new TIMCallBack() {
 		      @Override
 		      public void onSuccess() {
 		        Log.i(TAG, "init successfully. tiny id = " + IMSdkInt.get().getTinyId());
-		        onLogin(true, IMSdkInt.get().getTinyId(),0);
+		        onLogin(true, IMSdkInt.get().getTinyId());
 		        }
 		      
 		      @Override
 		      public void onError(int code, String desc) {
 		        Log.e(TAG, "init failed, imsdk error code  = " + code + ", desc = " + desc);
-		        onLogin(false, 0,code);
+		        onLogin(false, 0);
 		        }
 		      });
 	}
 	
-	private void onLogin(boolean result, long tinyId,int errorCode)
+	private void onLogin(boolean result, long tinyId)
 	{
 		if(result)
 		{
-			Log.d(TAG, "WL_DEBUG mConfig " + mConfig.identifier);
 			mAVContext = AVContext.createContext(mConfig);
 			Log.d(TAG, "WL_DEBUG startContext mAVContext is null? " + (mAVContext == null));
 			mSelfIdentifier = mConfig.identifier;
@@ -197,7 +199,7 @@ class AVContextControl {
 		}
 		else
 		{
-			mStartContextCompleteCallback.OnComplete(errorCode);
+			mStartContextCompleteCallback.OnComplete(AVError.AV_ERR_FAILED);
 		}
 	}
 	
@@ -217,5 +219,5 @@ class AVContextControl {
 		mIsInStopContext = false;
 		mContext.sendBroadcast(new Intent(
 		Util.ACTION_CLOSE_CONTEXT_COMPLETE));
-	}	
+	}
 }
